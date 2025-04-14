@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+
+  title: OpenFlightHub - Terrain Service
+  description: |-
+    # Welcome to the Terrain Service!
+
+
+    ## General Status Codes
+
+    These status codes can be returned by almost any path and are not specifically declared for each path!
+
+    ### Methods: All
+
+    * 400: you (the client) sent invalid data to the server
+    * 401: you are not authorized (but this endpoint requires you to be)
+    * 403: you do not have permission to do this
+    * 410: we understood your request but whatever you where looking for does not exist
+
+  version: 0.1.0
+externalDocs:
+  description: Learn more about Swagger Editor and OpenApi
+  url: http://swagger.io
+servers:
+  - url: http://localhost/
+tags:
+  - name: elevation
+    description: get elevation information
+paths:
+
+  /elevation:
+    post:
+      tags:
+        - elevation
+      summary: get elevation at coordinates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - longitude
+                - latitude
+              properties:
+                longitude:
+                  type: number
+                latitude:
+                  type: number
+
+        required: true
+      responses:
+          '200':
+            description: elevation above mean sea level
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - elevation
+                  properties:
+                    elevation:
+                      type: number
+                      example: 42
+          '400':
+              $ref: '#/components/responses/400'
+
+components:
+
+  responses:
+    '400':
+      description: Bad Request (Invalid input)
+      content:
+        text:
+          schema:
+            type: string
+            example: '.x'
+            description: the property `x` is invalid

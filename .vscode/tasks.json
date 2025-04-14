@@ -1,0 +1,55 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Local",
+			"type": "shell",
+			"command": "./build.sh",
+			"windows": {
+				"command": "./build.cmd"
+			},
+			"group": {"kind": "build", "isDefault": true},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true,
+			},
+		},
+		{
+			"label": "Build Docker and run",
+			"type": "shell",
+			"command": "./build_and_run_docker.sh",
+			"windows": {
+				"command": "./build_and_run_docker.cmd"
+			},
+			"group": {"kind": "build"},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true,
+			},
+		},
+		{
+			"label": "Test",
+			"type": "shell",
+			"command": "npx jest",
+			"group": {"kind": "test", "isDefault": true},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true,
+			}
+		}
+	]
+}
