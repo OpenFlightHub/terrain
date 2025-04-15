@@ -26,6 +26,8 @@ servers:
 tags:
   - name: elevation
     description: get elevation information
+  - name: ground-coverage
+    description: get ground-coverage information
 paths:
 
   /elevation:
@@ -45,6 +47,55 @@ paths:
                 longitude:
                   type: number
                 latitude:
+                  type: number
+
+        required: true
+      responses:
+          '200':
+            description: elevation above mean sea level
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - elevation
+                  properties:
+                    elevation:
+                      type: number
+                      example: 42
+          '400':
+              $ref: '#/components/responses/400'
+
+
+  /camera-ground-coverage:
+    post:
+      tags:
+        - ground-coverage
+      summary: get ground coverage polygon for camera view
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - longitude
+                - latitude
+                - altitude
+                - heading
+                - fovHorizontal
+                - fovVertical
+              properties:
+                longitude:
+                  type: number
+                latitude:
+                  type: number
+                altitude:
+                  type: number
+                heading:
+                  type: number
+                fovHorizontal:
+                  type: number
+                fovVertical:
                   type: number
 
         required: true

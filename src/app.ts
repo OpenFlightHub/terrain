@@ -24,6 +24,9 @@ if(!IS_TEST_ENVIRONMENT){
 import elevationRoute from './routes/elevation'
 app.use('/elevation', elevationRoute)
 
+import cameraGroundCoverageRoute from './routes/cameraGroundCoverage'
+app.use('/camera-ground-coverage', cameraGroundCoverageRoute)
+
 
 // 404 handler at almost the end of the use() chain
 app.use((req, res, next)=> {

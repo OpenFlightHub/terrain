@@ -6,6 +6,9 @@ const config: JestConfigWithTsJest = {
     clearMocks: true,
     coverageProvider: 'v8',
     moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json', 'node'],
+    "moduleNameMapper": {
+       "@(.*)$": "<rootDir>/node_modules/@$1"
+    },
 
     roots: ['<rootDir>/src'],
 
