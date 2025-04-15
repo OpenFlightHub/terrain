@@ -155,10 +155,10 @@ export function normalizePitchAndBearing(pitch: number, bearing: number){
     pitch = pitch % 360
 
     if(pitch > 90){
-        pitch -= 180
+        pitch = 180 - pitch
         bearing = (bearing + 180)
     } else if (pitch < -90){
-        pitch += 180
+        pitch = -180 - pitch
         bearing += 180
     }
 
