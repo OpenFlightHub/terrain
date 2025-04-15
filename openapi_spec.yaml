@@ -101,21 +101,51 @@ paths:
         required: true
       responses:
           '200':
-            description: elevation above mean sea level
+            description: ground coverage
             content:
               application/json:
                 schema:
                   type: object
                   required:
-                    - elevation
+                    - coverage
                   properties:
-                    elevation:
-                      type: number
-                      example: 42
+                    coverage:
+                      type: object
+                      required:
+                        - all
+                      properties:
+                        all:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/location'
           '400':
-              $ref: '#/components/responses/400'
+            $ref: '#/components/responses/400'
 
 components:
+
+  schemas:
+
+    location:
+      type: object
+      required:
+        - position
+        - elevation
+      properties:
+        position:
+          type: object
+          required:
+            - longitude
+            - latitude
+          properties:
+            longitude:
+              type: number
+              description: in degree
+            latitude:
+              type: number
+              description: in degree
+        elevation:
+          type: number
+          description: in meters
 
   responses:
     '400':

@@ -28,9 +28,9 @@ export async function calculateMaxLineOfSight(startLongitude: number, startLatit
             return {
                 position: {
                     longitude: currentPosition.geometry.coordinates[0],
-                    latitude: currentPosition.geometry.coordinates[0]
+                    latitude: currentPosition.geometry.coordinates[1]
                 },
-                altitude
+                elevation: altitude
             }
         }
 
@@ -126,7 +126,7 @@ function getDistanceInDegreesAndAltitudeForDistance(altitude: number, pitch: num
     const d = Math.acos(r2 / e)
 
     return {
-        altitude: e,
+        altitude: e - EARTH_RADIUS,
         distanceInDegrees: toDegrees(d)
     }
 

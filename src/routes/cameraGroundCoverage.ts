@@ -6,8 +6,8 @@ const router = express.Router()
 
 
 const GROUND_COVERAGE_TERRAIN_PRECISION = 50
-const GROUND_COVERAGE_MAX_DISTANCE = 1000
-const GROUND_COVERAGE_RAY_PRECISION = 0.1 // rays per degree
+const GROUND_COVERAGE_MAX_DISTANCE = 1000 * 30
+const GROUND_COVERAGE_RAY_PRECISION = 1 // rays per degree
 
 
 router.post('/', asyncHandler(async (req, res) => {
@@ -92,33 +92,29 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
 
     type losPoint = Exclude<Awaited<ReturnType<typeof calculateMaxLineOfSight>>, false>
 
-    const outerLosPoints: losPoint[] = []
     const allLospoints: losPoint[] = []
 
     const stepSize = 1/precision
 
+    const stepsHorizontal = Math.ceil(fovHorizontal / stepSize)
+    const stepsVertical = Math.ceil(fovVertical / stepSize)
 
-    for(let h = 0; h <= fovHorizontal; h+= stepSize){
-        const bearingTotal = bearing - fovHorizontal/2 + h
+    for(let hi = 0; hi <= stepsHorizontal; hi++){
+        const bearingTotal = bearing - fovHorizontal/2 + (hi * stepSize)
 
-        for(let v = 0; v <= fovVertical; v+= stepSize){
+        for(let vi = 0; vi <= stepsVertical; vi++){
 
-            const pitchTotal = pitch - fovVertical/2 + v
+            const pitchTotal = pitch - fovVertical/2 + (vi * stepSize)
 
             const los = await calculateMaxLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_TERRAIN_PRECISION, GROUND_COVERAGE_MAX_DISTANCE)
 
             if(los !== false){
                 allLospoints.push(los)
-
-                if(h === 0 || h === fovHorizontal || v === 0 || v === fovVertical){
-                    outerLosPoints.push(los)
-                }
             }
         }
     }
 
     return {
-        outer: outerLosPoints,
         all: allLospoints
     }
 }
