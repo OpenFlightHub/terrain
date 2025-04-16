@@ -18,4 +18,4 @@ RUN npx tsc --build --force --verbose
 
 RUN echo build done
 
-CMD [ "node", "dist/app.js" ]
+CMD [ "node", "dist/launch.js" ]
