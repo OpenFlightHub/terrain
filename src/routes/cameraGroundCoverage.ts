@@ -263,12 +263,47 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
 
     timerOuter.end()
 
+    const timerSimplifyHoleAreas = new Timer('simplify hole ares').start()
+
+    const simplifiedHoleAreas: losPoint[][] = []
+
+    for(const hole of holes){
+
+        const positions = hole.membersStart.concat(hole.membersEnd.reverse()).map(m => {
+            const p = map[m.hi][m.vi] as losPoint
+
+            return [p.position.longitude, p.position.latitude]
+        })
+
+        const simplified = turf.simplify(turf.lineString(positions), {
+            highQuality: true,
+            tolerance: 0.0005 // unit degrees?
+        })
+
+        const holePoints: losPoint[] = []
+
+        for(const c of simplified.geometry.coordinates){
+            holePoints.push({
+                position: {
+                    longitude: c[0],
+                    latitude: c[1]
+                },
+                elevation: await getElevation(c[0], c[1])
+            })
+        }
+
+        console.log('simplified', positions.length, 'to', holePoints.length)
+
+        simplifiedHoleAreas.push(holePoints)
+    }
+
+    timerSimplifyHoleAreas.end()
+
+
     return {
         all: allLosPoints,
         outer: outerLosPointsLow.concat(outerLosPointsHigh.reverse()),
-        holes: holes.map(h=>{
-            return (h.membersStart.concat(h.membersEnd.reverse())).map(m => map[m.hi][m.vi] as losPoint)
-        })
+        holes: simplifiedHoleAreas
     }
 }
 
