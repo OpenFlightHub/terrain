@@ -90,6 +90,16 @@ router.post('/', asyncHandler(async (req, res) => {
 //     53.13010235415598, GROUND_COVERAGE_RAY_PRECISION
 // ).then(console.log)
 
+
+type losPoint = {
+    position: {
+        longitude: number
+        latitude: number
+    },
+    elevation: number
+    debug?: string
+}
+
 /**
  *
  * @param fovHorizontal in degrees
@@ -98,14 +108,6 @@ router.post('/', asyncHandler(async (req, res) => {
  */
 async function calculateGroundCoverage(longitude: number, latitude: number, altitude: number, bearing: number, pitch: number, fovHorizontal: number, fovVertical: number, precision: number){
 
-    type losPoint = {
-        position: {
-            longitude: number
-            latitude: number
-        },
-        elevation: number
-        debug?: string
-    }
 
     const allLosPoints: losPoint[] = []
 
@@ -330,82 +332,81 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
     timerSimplifyHoleAreas.end()
 
 
-    /**
-     * makes sure the last and first point are identical
-     */
-    function convertLosPointsToCoordinates(points: losPoint[]){
+    const covered = JSON.parse(JSON.stringify(outerPoints)) as typeof outerPoints
 
-        if(JSON.stringify(points[0]) !== JSON.stringify(points[points.length -1])){
-            points.push(points[0])
-        }
-
-        return points.map(p => {
-            return [p.position.longitude, p.position.latitude]
-        })
+    for(const holeArea of simplifiedHoleAreas){
+        covered.splice(0, 0, covered[0], ...holeArea, holeArea[0])// dirty way to create an area that does not include holes (leads to glitching through terrain in cesium frontend)
     }
 
-    function convertLosPointsToLineString(points: losPoint[]){
-        return turf.lineString(convertLosPointsToCoordinates(points))
-    }
-
-    function convertLosPointsToPolygon(points: losPoint[]){
-        return turf.polygon([convertLosPointsToCoordinates(points)])
-    }
-
-    async function convertLineStringToLosPoints(lineString: Feature<LineString>){
-
-        const ret: losPoint[] = []
-
-        for(const c of lineString.geometry.coordinates){
-            ret.push({
-                position: {
-                    longitude: c[0],
-                    latitude: c[1]
-                },
-                elevation: await getElevation(c[0], c[1])
-            })
-        }
-
-        return ret
-    }
-
-
-    /**
-     * only supports polygons with a single circle
-     */
-    async function convertPolygonToLosPoints(polygon: Feature<Polygon>){
-
-        const ret: losPoint[] = []
-
-        for(const c of polygon.geometry.coordinates[0]){
-            ret.push({
-                position: {
-                    longitude: c[0],
-                    latitude: c[1]
-                },
-                elevation: await getElevation(c[0], c[1])
-            })
-        }
-
-        return ret
-    }
-
-
-
-
-    //TODO use helpers for converting between lospoint[] and linestring and the other way around!
-
-    const covered = turf.difference(turf.featureCollection(
-        simplifiedHoleAreas.map(ha => convertLosPointsToPolygon(ha))
-        .concat(convertLosPointsToPolygon(outerPoints))
-    ))
+    console.log(JSON.stringify(covered))
 
     return {
         all: allLosPoints,
         outer: outerPoints,
-        covered: await convertPolygonToLosPoints(covered as Feature<Polygon>),
+        covered,
         holes: simplifiedHoleAreas
     }
+}
+
+
+/**
+ * makes sure the last and first point are identical
+ */
+function convertLosPointsToCoordinates(points: losPoint[]){
+
+    if(JSON.stringify(points[0]) !== JSON.stringify(points[points.length -1])){
+        points.push(points[0])
+    }
+
+    return points.map(p => {
+        return [p.position.longitude, p.position.latitude]
+    })
+}
+
+function convertLosPointsToLineString(points: losPoint[]){
+    return turf.lineString(convertLosPointsToCoordinates(points))
+}
+
+function convertLosPointsToPolygon(points: losPoint[]){
+    return turf.polygon([convertLosPointsToCoordinates(points)])
+}
+
+async function convertLineStringToLosPoints(lineString: Feature<LineString>){
+
+    const ret: losPoint[] = []
+
+    for(const c of lineString.geometry.coordinates){
+        ret.push({
+            position: {
+                longitude: c[0],
+                latitude: c[1]
+            },
+            elevation: await getElevation(c[0], c[1])
+        })
+    }
+
+    return ret
+}
+
+
+/**
+ * only supports polygons with a single circle
+ */
+async function convertPolygonToLosPoints(polygon: Feature<Polygon>){
+
+    const ret: losPoint[] = []
+
+    for(const c of polygon.geometry.coordinates[0]){
+        ret.push({
+            position: {
+                longitude: c[0],
+                latitude: c[1]
+            },
+            elevation: await getElevation(c[0], c[1])
+        })
+    }
+
+    return ret
 }
 
 
