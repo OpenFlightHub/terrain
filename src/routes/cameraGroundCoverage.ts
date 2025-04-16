@@ -8,9 +8,9 @@ import Timer from '../util/timer'
 const router = express.Router()
 
 
-const GROUND_COVERAGE_TERRAIN_PRECISION = 80
+const GROUND_COVERAGE_TERRAIN_PRECISION = 50
 const GROUND_COVERAGE_MAX_DISTANCE = 1000 * 10
-const GROUND_COVERAGE_RAY_PRECISION = 1 // rays per degree (exponential work load)
+const GROUND_COVERAGE_RAY_PRECISION = 1.5 // rays per degree (exponential work load)
 
 
 router.post('/', asyncHandler(async (req, res) => {
