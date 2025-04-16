@@ -232,8 +232,6 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
     timerHoles.end()
 
 
-    const timerOuter = new Timer('outerLosPoints').start()
-
     const outerLosPointsLow: losPoint[] = []
     const outerLosPointsHigh: losPoint[] = []
 
@@ -265,8 +263,6 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
     }
 
     const outerPoints = outerLosPointsLow.concat(outerLosPointsHigh.reverse())
-
-    timerOuter.end()
 
     const timerSimplifyHoleAreas = new Timer('simplify hole ares').start()
 
@@ -324,8 +320,6 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
 
         const holePoints = await convertLineStringToLosPoints(simplified)
 
-        console.log('simplified', positions.length, 'to', holePoints.length)
-
         simplifiedHoleAreas.push(holePoints)
     }
 
@@ -337,8 +331,6 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
     for(const holeArea of simplifiedHoleAreas){
         covered.splice(0, 0, covered[0], ...holeArea, holeArea[0])// dirty way to create an area that does not include holes (leads to glitching through terrain in cesium frontend)
     }
-
-    console.log(JSON.stringify(covered))
 
     return {
         all: allLosPoints,
