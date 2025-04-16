@@ -1,6 +1,7 @@
 import * as turf from '@turf/turf'
 import { getElevation } from './hgt'
 
+
 /**
  *
  * @param bearing -180 to 180 (0 is north, -90 is west, 90 is east)
@@ -14,11 +15,20 @@ export async function calculateMaxLineOfSight(startLongitude: number, startLatit
 
     const normalized = normalizePitchAndBearing(pitch, bearing)
 
+    if(startAltitude > 10000 && pitch > 0 || pitch > 85){//higher then everest or looking into the sky
+        return false
+    }
+
     let currentDistance = typeof startAtDistance === 'number' ? (startAtDistance - precision) : precision
 
     while(currentDistance <= maxDistance){
 
         const {distanceInDegrees, altitude} = getDistanceInDegreesAndAltitudeForDistance(startAltitude, normalized.pitch, currentDistance)
+
+
+        if(altitude > 10000){//higher then everest
+            return false
+        }
 
         const currentPosition = turf.destination([startLongitude, startLatitude], distanceInDegrees, normalized.bearing, {
             units: 'degrees'
