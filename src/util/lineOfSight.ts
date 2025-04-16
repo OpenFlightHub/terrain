@@ -7,6 +7,7 @@ import { getElevation } from './hgt'
  * @param pitch -180 to 180 (+ means up)
  * @param precision in meters (how often measurements should take place, large values might miss hills or mountain tops). This should be choosen relative to the terrain elevation data precision (grid size)
  * @param maxDistance in meters
+ * @see calculateLineOfSight()
  */
 export async function calculateMaxLineOfSight(startLongitude: number, startLatitude: number, startAltitude: number, bearing: number, pitch: number, precision: number, maxDistance: number){
 
@@ -40,10 +41,39 @@ export async function calculateMaxLineOfSight(startLongitude: number, startLatit
     return false
 }
 
+
+/**
+ * does not colide with terrain
+ * @param bearing -180 to 180 (0 is north, -90 is west, 90 is east)
+ * @param pitch -180 to 180 (+ means up)
+ * @param precision in meters (how often measurements should take place, large values might miss hills or mountain tops). This should be choosen relative to the terrain elevation data precision (grid size)
+ * @param maxDistance in meters
+ * @see calculateMaxLineOfSight()
+ */
+export function calculateLineOfSight(startLongitude: number, startLatitude: number, startAltitude: number, bearing: number, pitch: number, distance: number){
+
+    const normalized = normalizePitchAndBearing(pitch, bearing)
+
+
+    const {distanceInDegrees, altitude} = getDistanceInDegreesAndAltitudeForDistance(startAltitude, normalized.pitch, distance)
+
+    const currentPosition = turf.destination([startLongitude, startLatitude], distanceInDegrees, normalized.bearing, {
+        units: 'degrees'
+    })
+
+    return {
+        position: {
+            longitude: currentPosition.geometry.coordinates[0],
+            latitude: currentPosition.geometry.coordinates[1]
+        },
+        elevation: altitude
+    }
+}
+
 /**
  * @param precision in meters
  */
-async function isTerrainBetween(longitudeA: number, latitudeA: number, altitudeA: number, longitudeB: number, latitudeB: number, pitch: number, precision: number){
+export async function isTerrainBetween(longitudeA: number, latitudeA: number, altitudeA: number, longitudeB: number, latitudeB: number, pitch: number, precision: number){
     const center = turf.midpoint([longitudeA, latitudeA], [longitudeB, latitudeB])
 
     const distanceInDegrees = turf.distance([longitudeA, latitudeA], [longitudeB, latitudeB], {
