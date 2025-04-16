@@ -9,7 +9,7 @@ const router = express.Router()
 
 const GROUND_COVERAGE_TERRAIN_PRECISION = 80
 const GROUND_COVERAGE_MAX_DISTANCE = 1000 * 10
-const GROUND_COVERAGE_RAY_PRECISION = 2 // rays per degree (exponential work load)
+const GROUND_COVERAGE_RAY_PRECISION = 1 // rays per degree (exponential work load)
 
 
 router.post('/', asyncHandler(async (req, res) => {
@@ -164,18 +164,6 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
                     }
                 }
 
-                let next: losPoint | false
-                let nextVi: number
-
-                for(let i = vi+1; i < map[0].length; i++){
-                    next = map[hi][i] // is looking further up
-
-                    if(next){
-                        nextVi = i
-                        break
-                    }
-                }
-
                 if(last){
 
                     const distanceBetweenMandLast = turf.distance([m.position.longitude, m.position.latitude], [last.position.longitude, last.position.latitude], {
@@ -184,16 +172,9 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
 
                     const ratio = (m.elevation - last.elevation) / distanceBetweenMandLast
 
-                    if(typeof lastRatio === 'number' && next){
+                    if(typeof lastRatio === 'number'){
 
-                        const distanceBetweenMandNext = turf.distance([m.position.longitude, m.position.latitude], [next.position.longitude, next.position.latitude], {
-                            units: 'meters'
-                        })
-
-                        const ratioNext = (next.elevation - m.elevation) / distanceBetweenMandNext
-
-                        //TODO looks like we dont need the ratio < ratioNext part???
-                        if(ratio < lastRatio && ratio < ratioNext/* && Math.abs(Math.atan(lastRatio) - Math.atan(ratio)) > turf.degreesToRadians(5)*/){
+                        if(ratio < lastRatio){
                             // a downwards dent
 
                             const center = turf.midpoint([m.position.longitude, m.position.latitude], [last.position.longitude, last.position.latitude])
