@@ -275,6 +275,43 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
             return [p.position.longitude, p.position.latitude]
         })
 
+        if(positions.length < 3){
+            continue
+        }
+
+        const distancesToNext: number[] = []
+
+        // fix single spikes that are very long
+        for(let pi = 0; pi < positions.length - 1; pi++){
+            const current = positions[pi]
+            const next = positions[pi + 1]
+
+            distancesToNext.push(turf.distance(current, next, {units: 'meters'}))
+        }
+        distancesToNext.push(turf.distance(positions[positions.length - 1], positions[0]))
+
+        for(let pi = 0; pi < positions.length; pi++){
+            const distanceToPrevious = distancesToNext[pi-1]
+            const distanceToNext = distancesToNext[pi]
+
+            const posPrevious = positions[pi === 0 ? (positions.length - 1) : (pi-1)]
+            const posNext = positions[(pi === positions.length - 1) ? 0 : pi+1]
+
+            const distanceBetweenLastAndNext = turf.distance(
+                posPrevious,
+                posNext
+            )
+
+            const spikeDistanceThreshold = distanceBetweenLastAndNext * 5
+
+            if(distanceToPrevious > spikeDistanceThreshold && distanceToNext > spikeDistanceThreshold){
+                distancesToNext.splice(pi-1, 2, turf.distance(posPrevious, posNext))
+                positions.splice(pi, 1)
+                pi--
+            }
+        }
+
+
         const simplified = turf.simplify(turf.lineString(positions), {
             highQuality: true,
             tolerance: 0.0005 // unit degrees?
