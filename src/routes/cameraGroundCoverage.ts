@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler'
 import { calculateLineOfSight, calculateMaxLineOfSight, isTerrainBetweenUsingAltitude, isTerrainBetweenUsingPitch } from '../util/lineOfSight'
 import * as turf from '@turf/turf'
 import { getElevation } from '../util/hgt';
+import Timer from '../util/timer'
 
 const router = express.Router()
 
@@ -65,13 +66,11 @@ router.post('/', asyncHandler(async (req, res) => {
         return
     }
 
-    const start = performance.now()
-    console.log('calculating camera ground coverage...')
+    const timer = new Timer('calculateGroundCoverage').start()
 
     const coverage = await calculateGroundCoverage(lon, lat, altitude, heading, pitch, fovHorizontal, fovVertical, GROUND_COVERAGE_RAY_PRECISION)
 
-    const end = performance.now()
-    console.log('  done after', Math.floor(end - start), 'ms')
+    timer.end()
 
     res.status(200).send({
         coverage
@@ -115,7 +114,10 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
     const stepsVertical = Math.ceil(fovVertical / stepSize)
 
     const map: (losPoint | false)[][] = new Array(stepsHorizontal + 1)
-//TODO parallelization on multiple threads
+
+
+    const timerMaxLineOfSight = new Timer('MaxLineOfSight').start()
+
     for(let hi = 0; hi <= stepsHorizontal; hi++){
         map[hi] = new Array(stepsVertical + 1)
 
@@ -125,7 +127,7 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
 
             const pitchTotal = pitch - fovVertical/2 + (vi * stepSize) + pitchCorrection(hi * stepSize - fovHorizontal/2)
 
-            const los = await calculateMaxLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_TERRAIN_PRECISION, GROUND_COVERAGE_MAX_DISTANCE)
+            const los = await calculateMaxLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_TERRAIN_PRECISION, GROUND_COVERAGE_MAX_DISTANCE)// running promises in parallel slows down by 30% lol
 
             if(los !== false){
                 allLosPoints.push(los)
@@ -139,6 +141,10 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
             map[hi][vi] = los
         }
     }
+
+    timerMaxLineOfSight.end()
+
+    const timerHoles = new Timer('holes').start()
 
     type hole = {membersStart: {hi: number, vi: number}[], membersEnd: {hi: number, vi: number}[]}
     const holes: hole[] = []
@@ -216,6 +222,10 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
         }
     }
 
+    timerHoles.end()
+
+
+    const timerOuter = new Timer('outerLosPoints').start()
 
     const outerLosPointsLow: losPoint[] = []
     const outerLosPointsHigh: losPoint[] = []
@@ -246,6 +256,8 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
             outerLosPointsHigh.push(map[hi][highestVi] as losPoint)
         }
     }
+
+    timerOuter.end()
 
     return {
         all: allLosPoints,
