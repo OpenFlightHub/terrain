@@ -4,6 +4,7 @@ import { calculateLineOfSight, calculateMaxLineOfSight, isTerrainBetweenUsingAlt
 import * as turf from '@turf/turf'
 import { getElevation } from '../util/hgt';
 import Timer from '../util/timer'
+import { Feature, LineString, Polygon } from 'geojson';
 
 const router = express.Router()
 
@@ -261,6 +262,8 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
         }
     }
 
+    const outerPoints = outerLosPointsLow.concat(outerLosPointsHigh.reverse())
+
     timerOuter.end()
 
     const timerSimplifyHoleAreas = new Timer('simplify hole ares').start()
@@ -317,17 +320,7 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
             tolerance: 0.0005 // unit degrees?
         })
 
-        const holePoints: losPoint[] = []
-
-        for(const c of simplified.geometry.coordinates){
-            holePoints.push({
-                position: {
-                    longitude: c[0],
-                    latitude: c[1]
-                },
-                elevation: await getElevation(c[0], c[1])
-            })
-        }
+        const holePoints = await convertLineStringToLosPoints(simplified)
 
         console.log('simplified', positions.length, 'to', holePoints.length)
 
@@ -337,12 +330,84 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
     timerSimplifyHoleAreas.end()
 
 
+    /**
+     * makes sure the last and first point are identical
+     */
+    function convertLosPointsToCoordinates(points: losPoint[]){
+
+        if(JSON.stringify(points[0]) !== JSON.stringify(points[points.length -1])){
+            points.push(points[0])
+        }
+
+        return points.map(p => {
+            return [p.position.longitude, p.position.latitude]
+        })
+    }
+
+    function convertLosPointsToLineString(points: losPoint[]){
+        return turf.lineString(convertLosPointsToCoordinates(points))
+    }
+
+    function convertLosPointsToPolygon(points: losPoint[]){
+        return turf.polygon([convertLosPointsToCoordinates(points)])
+    }
+
+    async function convertLineStringToLosPoints(lineString: Feature<LineString>){
+
+        const ret: losPoint[] = []
+
+        for(const c of lineString.geometry.coordinates){
+            ret.push({
+                position: {
+                    longitude: c[0],
+                    latitude: c[1]
+                },
+                elevation: await getElevation(c[0], c[1])
+            })
+        }
+
+        return ret
+    }
+
+
+    /**
+     * only supports polygons with a single circle
+     */
+    async function convertPolygonToLosPoints(polygon: Feature<Polygon>){
+
+        const ret: losPoint[] = []
+
+        for(const c of polygon.geometry.coordinates[0]){
+            ret.push({
+                position: {
+                    longitude: c[0],
+                    latitude: c[1]
+                },
+                elevation: await getElevation(c[0], c[1])
+            })
+        }
+
+        return ret
+    }
+
+
+
+
+    //TODO use helpers for converting between lospoint[] and linestring and the other way around!
+
+    const covered = turf.difference(turf.featureCollection(
+        simplifiedHoleAreas.map(ha => convertLosPointsToPolygon(ha))
+        .concat(convertLosPointsToPolygon(outerPoints))
+    ))
+
     return {
         all: allLosPoints,
-        outer: outerLosPointsLow.concat(outerLosPointsHigh.reverse()),
+        outer: outerPoints,
+        covered: await convertPolygonToLosPoints(covered as Feature<Polygon>),
         holes: simplifiedHoleAreas
     }
 }
+
 
 //TODO actually this a problem for all directions. pitch must incrase if bearing increases, the top left corner must have way more pitch then the top conter of an image (field of view)
 
