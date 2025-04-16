@@ -118,19 +118,23 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
 
     const timerMaxLineOfSight = new Timer('MaxLineOfSight').start()
 
+
     for(let hi = 0; hi <= stepsHorizontal; hi++){
         map[hi] = new Array(stepsVertical + 1)
 
         const bearingTotal = bearing - fovHorizontal/2 + (hi * stepSize)
 
+        let lastLosDistance: number
+
         for(let vi = 0; vi <= stepsVertical; vi++){
 
             const pitchTotal = pitch - fovVertical/2 + (vi * stepSize) + pitchCorrection(hi * stepSize - fovHorizontal/2)
 
-            const los = await calculateMaxLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_TERRAIN_PRECISION, GROUND_COVERAGE_MAX_DISTANCE)// running promises in parallel slows down by 30% lol
+            const los = await calculateMaxLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_TERRAIN_PRECISION, GROUND_COVERAGE_MAX_DISTANCE, typeof lastLosDistance === 'number' ? lastLosDistance : undefined)//because of how the terrain model works, we can assume, that given the previous max line of sight, we can kind of start looking for terrain from there
 
             if(los !== false){
                 allLosPoints.push(los)
+                lastLosDistance = los.directDistance
             } else {
                 const directLos = calculateLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_MAX_DISTANCE) as losPoint
                 directLos.debug = 'failed'

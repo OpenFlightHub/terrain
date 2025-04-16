@@ -7,13 +7,14 @@ import { getElevation } from './hgt'
  * @param pitch -180 to 180 (+ means up)
  * @param precision in meters (how often measurements should take place, large values might miss hills or mountain tops). This should be choosen relative to the terrain elevation data precision (grid size)
  * @param maxDistance in meters
+ * @param startAtDistance can be used to optimize multiple calls of this function, if you know the last calculateMaxLineOfSight was successfull and the current pitch is above the last one, you can asume the last.directDistance is free of terrain too and can be used as a value for startAtDistance
  * @see calculateLineOfSight()
  */
-export async function calculateMaxLineOfSight(startLongitude: number, startLatitude: number, startAltitude: number, bearing: number, pitch: number, precision: number, maxDistance: number){
+export async function calculateMaxLineOfSight(startLongitude: number, startLatitude: number, startAltitude: number, bearing: number, pitch: number, precision: number, maxDistance: number, startAtDistance?: number){
 
     const normalized = normalizePitchAndBearing(pitch, bearing)
 
-    let currentDistance = precision
+    let currentDistance = typeof startAtDistance === 'number' ? (startAtDistance - precision) : precision
 
     while(currentDistance <= maxDistance){
 
@@ -31,7 +32,8 @@ export async function calculateMaxLineOfSight(startLongitude: number, startLatit
                     longitude: currentPosition.geometry.coordinates[0],
                     latitude: currentPosition.geometry.coordinates[1]
                 },
-                elevation: altitude
+                elevation: altitude,
+                directDistance: currentDistance
             }
         }
 
