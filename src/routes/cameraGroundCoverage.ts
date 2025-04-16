@@ -1,7 +1,8 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler'
-import { calculateLineOfSight, calculateMaxLineOfSight, isTerrainBetween } from '../util/lineOfSight'
+import { calculateLineOfSight, calculateMaxLineOfSight, isTerrainBetweenUsingAltitude, isTerrainBetweenUsingPitch } from '../util/lineOfSight'
 import * as turf from '@turf/turf'
+import { getElevation } from '../util/hgt';
 
 const router = express.Router()
 
@@ -191,29 +192,39 @@ async function calculateGroundCoverage(longitude: number, latitude: number, alti
 
                         const ratioNext = (next.elevation - m.elevation) / distanceBetweenMandNext
 
+                        //TODO looks like we dont need the ratio < ratioNext part???
                         if(ratio < lastRatio && ratio < ratioNext/* && Math.abs(Math.atan(lastRatio) - Math.atan(ratio)) > turf.degreesToRadians(5)*/){
-                            // hole
+                            // a downwards dent
 
-                            last.debug = 'hole-start'
-                            m.debug = 'hole-end'
+                            const center = turf.midpoint([m.position.longitude, m.position.latitude], [last.position.longitude, last.position.latitude])
+                            const centerElevation = await getElevation(center.geometry.coordinates[0], center.geometry.coordinates[1])
 
-                            let foundExistingHole = false
+                            const terrainBetween = await isTerrainBetweenUsingAltitude(center.geometry.coordinates[0], center.geometry.coordinates[1], centerElevation, longitude, latitude, altitude, GROUND_COVERAGE_TERRAIN_PRECISION)
 
-                            for(const hole of holes){
+                            if(terrainBetween){
+                                // actual hole
 
-                                if(hole.membersStart.find(m => Math.abs(m.vi - vi) <= 1 && Math.abs(m.hi - hi) <= /* TODO === or <= ? */ 1)){
-                                    hole.membersStart.push({hi, vi})
-                                    hole.membersEnd.push({hi, vi: lastVi})
-                                    foundExistingHole = true
-                                    break
+                                last.debug = 'hole-start'
+                                m.debug = 'hole-end'
+
+                                let foundExistingHole = false
+
+                                for(const hole of holes){
+
+                                    if(hole.membersStart.find(m => Math.abs(m.vi - vi) <= 1 && Math.abs(m.hi - hi) <= /* TODO === or <= ? */ 1)){
+                                        hole.membersStart.push({hi, vi})
+                                        hole.membersEnd.push({hi, vi: lastVi})
+                                        foundExistingHole = true
+                                        break
+                                    }
                                 }
-                            }
 
-                            if(!foundExistingHole){
-                                holes.push({
-                                    membersStart: [{hi, vi}],
-                                    membersEnd: [{hi, vi: lastVi}]
-                                })
+                                if(!foundExistingHole){
+                                    holes.push({
+                                        membersStart: [{hi, vi}],
+                                        membersEnd: [{hi, vi: lastVi}]
+                                    })
+                                }
                             }
                         }
                     }

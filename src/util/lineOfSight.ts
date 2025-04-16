@@ -73,7 +73,7 @@ export function calculateLineOfSight(startLongitude: number, startLatitude: numb
 /**
  * @param precision in meters
  */
-export async function isTerrainBetween(longitudeA: number, latitudeA: number, altitudeA: number, longitudeB: number, latitudeB: number, pitch: number, precision: number){
+export async function isTerrainBetweenUsingPitch(longitudeA: number, latitudeA: number, altitudeA: number, longitudeB: number, latitudeB: number, pitch: number, precision: number){
     const center = turf.midpoint([longitudeA, latitudeA], [longitudeB, latitudeB])
 
     const distanceInDegrees = turf.distance([longitudeA, latitudeA], [longitudeB, latitudeB], {
@@ -89,13 +89,46 @@ export async function isTerrainBetween(longitudeA: number, latitudeA: number, al
         if(turf.distance([longitudeA, latitudeA], [longitudeB, latitudeB], {
             units: 'meters'
         }) > precision){
-            const isTerrainBetweenAandCenter = await isTerrainBetween(longitudeA, latitudeA, altitudeA, center.geometry.coordinates[0], center.geometry.coordinates[1], pitch, precision)
+            const isTerrainBetweenAandCenter = await isTerrainBetweenUsingPitch(longitudeA, latitudeA, altitudeA, center.geometry.coordinates[0], center.geometry.coordinates[1], pitch, precision)
 
             if(isTerrainBetweenAandCenter){
                 return true
             }
 
-            const isTerrainBetweenBandCenter = await isTerrainBetween(center.geometry.coordinates[0], center.geometry.coordinates[1], centerAltitude, longitudeB, latitudeB, pitch, precision)
+            const isTerrainBetweenBandCenter = await isTerrainBetweenUsingPitch(center.geometry.coordinates[0], center.geometry.coordinates[1], centerAltitude, longitudeB, latitudeB, pitch, precision)
+
+            if(isTerrainBetweenBandCenter){
+                return true
+            }
+        }
+    }
+
+    return false
+}
+
+
+/**
+ * @param precision in meters
+ */
+export async function isTerrainBetweenUsingAltitude(longitudeA: number, latitudeA: number, altitudeA: number, longitudeB: number, latitudeB: number, altitudeB: number, precision: number){
+    const center = turf.midpoint([longitudeA, latitudeA], [longitudeB, latitudeB])
+
+    const centerAltitude = (altitudeA + altitudeB)/2
+    const isBelowTerrain = await isAltitudeBelowTerrain(center.geometry.coordinates[0], center.geometry.coordinates[1], centerAltitude)
+
+    if(isBelowTerrain){
+        return true
+    } else {
+        if(turf.distance([longitudeA, latitudeA], [longitudeB, latitudeB], {
+            units: 'meters'
+        }) > precision){
+            const isTerrainBetweenAandCenter = await isTerrainBetweenUsingAltitude(longitudeA, latitudeA, altitudeA, center.geometry.coordinates[0], center.geometry.coordinates[1], centerAltitude, precision)
+
+            if(isTerrainBetweenAandCenter){
+                return true
+            }
+
+            const isTerrainBetweenBandCenter = await isTerrainBetweenUsingAltitude(center.geometry.coordinates[0], center.geometry.coordinates[1], centerAltitude, longitudeB, latitudeB, altitudeB, precision)
 
             if(isTerrainBetweenBandCenter){
                 return true
