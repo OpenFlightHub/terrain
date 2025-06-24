@@ -47,7 +47,7 @@ export async function calculateGroundCoverage(longitude: number, latitude: numbe
 
         const bearingTotal = bearing - fovHorizontal/2 + (hi * stepSize)
 
-        let lastLosDistance: number
+        let lastLosDistance: number | undefined
 
         for(let vi = 0; vi <= stepsVertical; vi++){
 
@@ -78,15 +78,15 @@ export async function calculateGroundCoverage(longitude: number, latitude: numbe
 
     for(let hi = 0; hi < map.length; hi++){
 
-        let lastRatio: number
+        let lastRatio: number | undefined
 
         for(let vi = 0; vi < map[0].length; vi++){
             const m = map[hi][vi]
 
             if(m !== false){
 
-                let last: losPoint | false
-                let lastVi: number
+                let last: losPoint | false = false
+                let lastVi: number | undefined
 
                 for(let i = vi-1; i >= 0; i--){
                     last = map[hi][i] // is looking further down
@@ -127,7 +127,7 @@ export async function calculateGroundCoverage(longitude: number, latitude: numbe
 
                                     if(hole.membersStart.find(m => Math.abs(m.vi - vi) <= 1 && Math.abs(m.hi - hi) <= /* TODO === or <= ? */ 1)){
                                         hole.membersStart.push({hi, vi})
-                                        hole.membersEnd.push({hi, vi: lastVi})
+                                        hole.membersEnd.push({hi, vi: lastVi!})
                                         foundExistingHole = true
                                         break
                                     }
@@ -136,7 +136,7 @@ export async function calculateGroundCoverage(longitude: number, latitude: numbe
                                 if(!foundExistingHole){
                                     holes.push({
                                         membersStart: [{hi, vi}],
-                                        membersEnd: [{hi, vi: lastVi}]
+                                        membersEnd: [{hi, vi: lastVi!}]
                                     })
                                 }
                             }
