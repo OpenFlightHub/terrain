@@ -17,6 +17,7 @@ type losPoint = {
         latitude: number
     },
     elevation: number
+    directDistance: number
     debug?: string
 }
 
@@ -238,7 +239,7 @@ export async function calculateGroundCoverage(longitude: number, latitude: numbe
             tolerance: 0.0005 // unit degrees?
         })
 
-        const holePoints = await convertLineStringToLosPoints(simplified)
+        const holePoints = await convertLineStringToLosPoints(simplified, longitude, latitude, altitude)
 
         simplifiedHoleAreas.push(holePoints)
     }
@@ -283,17 +284,21 @@ function convertLosPointsToPolygon(points: losPoint[]){
     return turf.polygon([convertLosPointsToCoordinates(points)])
 }
 
-async function convertLineStringToLosPoints(lineString: Feature<LineString>){
+async function convertLineStringToLosPoints(lineString: Feature<LineString>, longitude: number, latitude: number, altitude: number){
 
     const ret: losPoint[] = []
 
     for(const c of lineString.geometry.coordinates){
+
+        const elevation = await getElevation(c[0], c[1])
+
         ret.push({
             position: {
                 longitude: c[0],
                 latitude: c[1]
             },
-            elevation: await getElevation(c[0], c[1])
+            directDistance: calculateDirectDistance(longitude, latitude, altitude, c[0], c[1], elevation),
+            elevation
         })
     }
 
@@ -304,21 +309,35 @@ async function convertLineStringToLosPoints(lineString: Feature<LineString>){
 /**
  * only supports polygons with a single circle
  */
-async function convertPolygonToLosPoints(polygon: Feature<Polygon>){
+async function convertPolygonToLosPoints(polygon: Feature<Polygon>, longitude: number, latitude: number, altitude: number){
 
     const ret: losPoint[] = []
 
     for(const c of polygon.geometry.coordinates[0]){
+
+        const elevation = await getElevation(c[0], c[1])
+
         ret.push({
             position: {
                 longitude: c[0],
                 latitude: c[1]
             },
-            elevation: await getElevation(c[0], c[1])
+            directDistance: calculateDirectDistance(longitude, latitude, altitude, c[0], c[1], elevation),
+            elevation
         })
     }
 
     return ret
+}
+
+
+function calculateDirectDistance(longitudeA: number, latitudeA: number, altitudeA: number, longitudeB: number, latitudeB: number, altitudeB: number){
+
+    const groundDistance = turf.distance([longitudeA, latitudeA], [longitudeB, latitudeB])
+
+    const altDifference = altitudeA - altitudeB
+
+    return Math.sqrt(groundDistance**2 + altDifference**2)
 }
 
 
