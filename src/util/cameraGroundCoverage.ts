@@ -1,4 +1,4 @@
-import { calculateLineOfSight, calculateMaxLineOfSight, isTerrainBetweenUsingAltitude, isTerrainBetweenUsingPitch } from '../util/lineOfSight'
+import { calculateLineOfSight, calculateMaxLineOfSight, isTerrainBetweenUsingAltitude, isTerrainBetweenUsingPitch, normalizePitchAndBearing } from '../util/lineOfSight'
 import * as turf from '@turf/turf'
 import { getElevation } from '../util/hgt';
 import Timer from '../util/timer'
@@ -30,7 +30,7 @@ type losPoint = {
 export async function calculateGroundCoverage(longitude: number, latitude: number, altitude: number, bearing: number, pitch: number, fovHorizontal: number, fovVertical: number, precision: number){
 
 
-    const allLosPoints: losPoint[] = []
+    const allLosPoints: (losPoint & {ray: {bearing: number, pitch: number, imagePosition: {x: number, y: number}}, meterSize: {horizontal: number, vertical: number}})[] = []
 
     const stepSize = 1/precision
 
@@ -57,13 +57,33 @@ export async function calculateGroundCoverage(longitude: number, latitude: numbe
             const los = await calculateMaxLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_TERRAIN_PRECISION, GROUND_COVERAGE_MAX_DISTANCE, typeof lastLosDistance === 'number' ? lastLosDistance : undefined)//because of how the terrain model works, we can assume, that given the previous max line of sight, we can kind of start looking for terrain from there
 
             if(los !== false){
-                allLosPoints.push(los)
+                allLosPoints.push({
+                    position: los.position,
+                    elevation: los.elevation,
+                    directDistance: los.directDistance,
+                    ray: {
+                        bearing: bearingTotal,
+                        pitch: pitchTotal,
+                        imagePosition: calculateRayImagePosition(bearing, pitch, fovHorizontal, fovVertical, bearingTotal, pitchTotal)
+                    },
+                    meterSize: calculateRelativeSizeOfOneMeter(los.directDistance, fovVertical, fovHorizontal)
+                })
                 lastLosDistance = los.directDistance
             } else {
                 const directLos = calculateLineOfSight(longitude, latitude, altitude, bearingTotal, pitchTotal, GROUND_COVERAGE_MAX_DISTANCE) as losPoint
                 directLos.debug = 'failed'
 
-                allLosPoints.push(directLos)
+                allLosPoints.push({
+                    position: directLos.position,
+                    elevation: directLos.elevation,
+                    directDistance: directLos.directDistance,
+                    ray: {
+                        bearing: bearingTotal,
+                        pitch: pitchTotal,
+                        imagePosition: calculateRayImagePosition(bearing, pitch, fovHorizontal, fovVertical, bearingTotal, pitchTotal)
+                    },
+                    meterSize: calculateRelativeSizeOfOneMeter(directLos.directDistance, fovVertical, fovHorizontal)
+                })
             }
 
             map[hi][vi] = los
@@ -341,11 +361,49 @@ function calculateDirectDistance(longitudeA: number, latitudeA: number, altitude
 }
 
 
-//TODO actually this a problem for all directions. pitch must incrase if bearing increases, the top left corner must have way more pitch then the top conter of an image (field of view)
+//TODO actually this is a problem for all directions. pitch must incrase if bearing increases, the top left corner must have way more pitch then the top corner of an image (field of view)
 
 // fixes the bending at the bottom
 function pitchCorrection(bearing: number){
     const bearingDelta = Math.abs(bearing)
 
     return 0 //bearingDelta**1.75 / 100
+}
+
+function calculateRayImagePosition(bearingCamera: number, pitchCamera: number, fovHorizontal: number, fovVertical: number, bearingRay: number, pitchRay: number){
+
+    const deltaBearing = bearingCamera - bearingRay
+    const deltaPitch = pitchCamera - pitchRay
+
+    const deltaNormalized = normalizePitchAndBearing(deltaPitch, deltaBearing)
+
+    const distanceToPlaneHorizontal = 0.5 / Math.tan(degreeToRadians(fovHorizontal) / 2)
+    const ratioX = Math.tan(degreeToRadians(deltaNormalized.bearing)) * distanceToPlaneHorizontal
+
+    const distanceToPlaneVertical = 0.5 / Math.tan(degreeToRadians(fovVertical) / 2)
+    const ratioY = Math.tan(degreeToRadians(deltaNormalized.pitch)) * distanceToPlaneVertical
+
+    return {
+        x: 0.5 - ratioX,
+        y: 0.5 + ratioY
+    }
+}
+
+function degreeToRadians(deg: number){
+    return deg * Math.PI/180
+}
+
+function calculateRelativeSizeOfOneMeter(distance: number, fovVertical: number, fovHorizontal: number){
+    //TODO this does not take into account the bending
+
+    function help(fov: number, dist: number){
+        const planeSize = 2 * Math.tan(degreeToRadians(fov/2)) * dist
+
+        return 1 / planeSize
+    }
+
+    return {
+        horizontal: help(fovHorizontal, distance),
+        vertical: help(fovVertical, distance)
+    }
 }
