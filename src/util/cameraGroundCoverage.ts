@@ -399,7 +399,13 @@ function calculateRelativeSizeOfOneMeter(distance: number, fovVertical: number, 
     function help(fov: number, dist: number){
         const planeSize = 2 * Math.tan(degreeToRadians(fov/2)) * dist
 
-        return 1 / planeSize
+        const ret = 1 / planeSize
+
+        if(isNaN(ret) || !isFinite(ret)){//TODO dirty fix?
+            return 0
+        } else {
+            return ret
+        }
     }
 
     return {
